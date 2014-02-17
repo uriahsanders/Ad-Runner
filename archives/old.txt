@@ -1,0 +1,175 @@
+////OLD STUFF:
+
+(function() {
+	var canvas = document.getElementById('main');
+	var ctx = canvas.getContext('2d');
+	canvas.height = document.height;
+	canvas.width = document.width;
+	var width = canvas.width;
+	var height = canvas.height;
+	var center = (width / 2);
+	var tick = 3000;
+	var rectWidth = 200;
+	var taper = 45;
+	var keep;
+	var Obstacle = (function() {
+		var cc = 2.3;
+		function comeCloser() {
+			canvas.width = canvas.width;
+			ctx.strokeStyle = 'green';
+			ctx.fillStyle = 'green';
+			ctx.beginPath();
+			ctx.arc(center, height / cc, 150, Math.PI, 2 * Math.PI);
+			ctx.stroke();
+			ctx.fill();
+			cc -= 0.1;
+			if(cc < 0) clearInterval(keep);
+		}
+		var Obstacle = function(type, actionToAvoid, speed) {
+			ctx.strokeStyle = 'green';
+			ctx.fillStyle = 'green';
+			ctx.beginPath();
+			ctx.arc(center, height / cc, 150, Math.PI, 2 * Math.PI);
+			ctx.stroke();
+			ctx.fill();
+			// keep = setInterval(function() {
+			// 	comeCloser(cc);
+			// }, 100);
+		};
+		return Obstacle;
+	})();
+	var Ad = (function() {
+		var Ad = function(product, height, width, power, time) {
+
+		};
+		Ad.prototype.present = function() {
+
+		};
+		Ad.prototype.attack = function() {
+
+		};
+		Ad.prototype.speak = function() {
+
+		};
+		return Ad;
+	})();
+	var Player = (function() {
+		var Player = function(name, previousHighScore) {
+			ctx.strokeStyle = 'green';
+			ctx.fillStyle = 'green';
+			ctx.beginPath(); //2
+			var charHeight = 75;
+			ctx.rect(center - charHeight / 2, height - 300, charHeight, 150);
+			ctx.stroke();
+			ctx.fill();
+		};
+		Player.prototype.begin = function() {
+
+		};
+		Player.prototype.sway = function() {
+
+		};
+		Player.prototype.jump = function() {
+
+		};
+		Player.prototype.pause = function() {
+
+		};
+		Player.prototype.duck = function() {
+
+		};
+		Player.prototype.speak = function() {
+
+		};
+		return Player;
+	})();
+	var Game = (function() {
+		return {
+			quit: function() {
+
+			},
+			pause: function() {
+
+			},
+			drawRoad: function() {
+				ctx.fillStyle = '#000';
+				ctx.strokeStyle = 'green';
+				ctx.lineWidth = 10;
+				ctx.beginPath();
+				ctx.moveTo(center - 200 / 2 - taper - 30, height + 10); //bottom left
+				ctx.lineTo(center - 200 / 2 + taper, height / 5); //top left
+				ctx.lineTo(center - 200 / 2 + rectWidth - taper, height / 5); //top right
+				ctx.lineTo(center - 200 / 2 + rectWidth + taper + 30, height + 10); //bottom right
+				ctx.closePath();
+				ctx.fill();
+				ctx.stroke();
+			},
+			drawUI: function() {
+				//buttons
+				ctx.fillStyle = 'green';
+				ctx.beginPath(); //1
+				ctx.arc(center / 2, height - 75, 50, 0, 2 * Math.PI);
+				ctx.stroke();
+				ctx.fill();
+				ctx.beginPath(); //2
+				ctx.arc(center, height - 75, 50, 0, 2 * Math.PI);
+				ctx.stroke();
+				ctx.fill();
+				ctx.beginPath(); //3
+				ctx.arc(center * 1.5, height - 75, 50, 0, 2 * Math.PI);
+				ctx.stroke();
+				ctx.fill();
+				//digital rain
+				//making the canvas full screen
+				//binary characters - taken from the unicode charset
+				var binary = "1010101010101101010100010101011111010101010101";
+				//converting the string into an array of single characters
+				binary = binary.split("");
+				var font_size = 10;
+				var columns = canvas.width / font_size; //number of columns for the rain
+				//an array of drops - one per column
+				var drops = [];
+				//x below is the x coordinate
+				//1 = y co-ordinate of the drop(same for every drop initially)
+				for (var x = 0; x < columns; x++)
+					drops[x] = 1;
+				//drawing the characters
+				function draw() {
+					//Black BG for the canvas
+					//translucent BG to show trail
+					ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+					ctx.fillRect(0, 0, canvas.width, canvas.height / 4.5);
+					ctx.fillStyle = "#0F0"; //green text
+					ctx.font = font_size + "px arial";
+					//looping over drops
+					for (var i = 0; i < drops.length; i++) {
+						//a random binary character to print
+						var text = binary[Math.floor(Math.random() * binary.length)];
+						//x = i*font_size, y = value of drops[i]*font_size
+						ctx.fillText(text, i * font_size, (drops[i] * font_size / 3 < canvas.height / 4.5) ? drops[i] * font_size / 3 : 0);
+						//sending the drop back to the top randomly after it has crossed the screen
+						//adding a randomness to the reset to make the drops scattered on the Y axis
+						if (drops[i] * font_size > canvas.height / 3.5 && Math.random() > 0.975)
+							drops[i] = 0;
+						//incrementing Y coordinate
+						drops[i]++;
+					}
+				}
+				setInterval(draw, 33);
+			},
+			init: function() {
+				this.drawRoad();
+				this.drawUI();
+				var player = new Player('name', 0);
+
+				function gameLoop() {
+					var obs = new Obstacle();
+					var ad = new Ad();
+				}
+				gameLoop();
+				setInterval(gameLoop, 3000);
+			}
+		};
+	})();
+	Game.init();
+})();

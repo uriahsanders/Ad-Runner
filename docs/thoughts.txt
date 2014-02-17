@@ -1,0 +1,20 @@
+-Name: Ad_Runner
+-Goal is to gain the most amount of point through running longer
+-Infinite game
+-Theme: Inside of phone
+-Note: comedy
+-Money made through: Ads
+-Obtacles: Ads that attack you, and phone parts
+-Points calculated by: Distance.
+-Die by: Running into obstacle or ad
+-If you run into an ad it presents itself
+-Save ads locally, send amount seen to server
+-botton control 
+-upgradable character 
+(Ingame design)
+-self build road 
+-obstacle fly down and digial pop up
+-if hit by ads, the ads will zoom in to the sreecn 
+-ones and zeros are coming down from the back ground
+
+Future: Upgrade system, phone wallpapers/themes 
