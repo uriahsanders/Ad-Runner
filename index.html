@@ -1,12 +1,31 @@
 <!doctype html>
 <html lang="en">
+<!-- Non-Mobile Version -->
 <head>
 	<meta charset="UTF-8">
 	<title>Ad_Runner</title>
+	<!-- <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jquerymobile/1.4.0/jquery.mobile.min.css" /> -->
 	<link rel="stylesheet" href="css/main.css">
 </head>
 <body>
-	<canvas></canvas>
-	<script src="js/canvas.js"></script>
+	<div id="dom">
+		<div id="title">
+			Ad_Runner
+		</div><br>
+		<div id="description">
+			You are Ad_Runner: An advanced ad-blocker program designed to run through games and destroy all ads within them. Each time you do a good job, your client will buy a better version of you, which means you get upgraded. Your goal is to beat each game without dying, and get rid of as many ads along the way as possible. But watch out! Ads are really, really annoying, and will do anything to sell their product.
+		</div><br>
+		<div id="levels">
+			<button class="level"id="level-1">1</button>
+		</div>
+	</div>
+	<!-- Canvas -->
+	<canvas id="game"></canvas>
+	<!-- Scripts (In production will only use ad_runner.min.js and dependancies) -->
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+	<!-- <script src="https://ajax.googleapis.com/ajax/libs/jquerymobile/1.4.0/jquery.mobile.min.js"></script> -->
+	<script src="js/functions.js"></script>
+	<script src="js/game.js"></script>
+	<script src="js/controller.js"></script>
 </body>
 </html>
