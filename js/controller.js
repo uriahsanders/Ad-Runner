@@ -27,4 +27,4 @@ $(document).keyup(function(e) {
 		showStartPage();
 	}
 });
-$('#level-1').click(); //temp (start game automatically)
+//$('#level-1').click(); //temp (start level 1 automatically)
