@@ -17,8 +17,8 @@ $(document).on('click', '[id^="level-"]', function() {
 });
 //keep canvas full screen
 $(window).on("resize", function() {
-	$("#game").css("width", $(this).width() + "px");
-	$("#game").css("height", $(this).height() + "px");
+	$("#game").css("width", window.innerWidth + "px");
+	$("#game").css("height", window.innerHeight + "px");
 });
 //keyboard handlers
 $(document).keyup(function(e) {
@@ -27,4 +27,4 @@ $(document).keyup(function(e) {
 		showStartPage();
 	}
 });
-//$('#level-1').click(); //temp (start level 1 automatically)
+$('#level-1').click(); //temp (start level 1 automatically)
