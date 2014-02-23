@@ -254,13 +254,13 @@ var data = {
 							//they have touched the platform
 							if (collides(thiz, obstacle)) {
 								//if they are above platform and jumping
-								if (thiz.currentAction === 'jumping' && thiz.y <= obstacle.y) {
+								if ((thiz.currentAction === 'jumping' || thiz.currentAction === 'falling') && thiz.y <= obstacle.y - obstacle.height) {
 									//if we're not jumping and we are moving horizontally prevent us from continuing to fall by stoping y velocity
-									if (!inArray(thiz.currentActions, 'jumping') && (thiz.lastAction === 'moving right') || (thiz.lastAction === 'moving left'))
+									if (!inArray(thiz.currentActions, 'jumping') && (thiz.lastAction === 'moving right' || thiz.lastAction === 'moving left'))
 										thiz.vy = 0;
 									//stand if we landed for the first time
 									//if we're not moving left or right when we hit the ground stop
-									if (thiz.currentAction === 'jumping') {
+									if (thiz.currentAction === 'jumping' || thiz.currentAction === 'falling') {
 										removeFromArray(thiz.currentActions, 'jumping');
 										if (!(thiz.lastAction === 'moving right') && !(thiz.lastAction === 'moving left')) {
 											//only stand after initial landing and not moving left or right
@@ -324,8 +324,15 @@ var data = {
 				$(document).keydown(function(e) {
 					//dont register movement keys if in mid-air
 					var key = e.keyCode;
+					var obstacles = RETURN.stageObject.obstacles;
 					if (player.numToAction(key) !== false) { //is key valid?
-						if (player.currentAction !== 'jumping' && key !== 32) { //if not jumping and not shooting
+						//if they are jumping or shooting they cant do anything but jump unless they are in the air
+						if ((player.currentAction !== 'jumping' || (key === 38 && (player.y === groundLocation || !(function() {
+							for (var i = obstacles.length - 1; i >= 0; --i) {
+								if (collides(player, obstacles[i])) return false;
+							}
+							return true;
+						})()))) && key !== 32) { //if not jumping and not shooting
 							//do different action depending on key code of key press
 							var action = player.numToAction(key);
 							//horizontal movement requires a more static identifier for accurate landing + movement
