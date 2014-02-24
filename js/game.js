@@ -42,7 +42,6 @@ var data = {
 			RETURN.stageObject = { //object contains functions defining how the stage will change over time
 				/**
 				 *Map of the stage as array (each item is a "block" on the stage L -> R)
-				 *the dimensions of each "block" will be determined in the loop for hard coded entropy
 				 *the width of space taken by each block is an even portion of the canvas width
 				 *Legend:
 				 *-1's are empty spaces
@@ -57,7 +56,7 @@ var data = {
 				 *10 is the Boss
 				 */
 				map: [ //temp
-					-1, -1, 2, -1, -1, 2, 4, 3, -1, 2, 3, 4, -1, -1, -1, 3
+					1, -1, -1, -1, 2, -1, -1, 2, 4, 3, -1, 2, 3, 4, -1, -1, -1, 3
 				],
 				obstacles: [],
 				newObstacle: function(self) {
@@ -92,8 +91,8 @@ var data = {
 								obj.y = 0;
 								obj.height = 0;
 							} else if (block === 1) {
-								obj.y = groundLocation * 1.01 - obstacleHeight * 2 / 2;
-								obj.height = lowPlatformHeight;
+								obj.y = groundLocation * 1.01 - obstacleHeight * 4;
+								obj.height = highPlatformHeight;
 							} else if (block === 2 || block === 3 || block === 4) {
 								obj.height = 3;
 								switch (block) {
@@ -128,8 +127,8 @@ var data = {
 				health: 100, //temp
 				points: 0,
 				playerIsFacing: 'right', //right/left
-				//a quarter of a block from left
-				x: width / 40, //X & Y coordinates
+				//start a little away from the farthest x (0)
+				x: width / 7, //X & Y coordinates
 				y: groundLocation,
 				vx: 0, //horizontal velocity
 				vy: 0, //vertical velocity
@@ -242,38 +241,45 @@ var data = {
 					var obstacleHeight = height / 15; //height of obstacles
 					var lowPlatformHeight = height - obstacleHeight * 2;
 					var obstacles = RETURN.stageObject.obstacles;
-					obstacles.forEach(function(obstacle) {
-						//SIDE SCROLLING (move back stage as we walk)
-						if (inArray(thiz.currentActions, 'moving right') || inArray(thiz.currentActions, 'moving left')) {
-							obstacle.x -= thiz.vx;
-						}
-						//OBSTACLE COLLISIONS
-						//platforms
-						if (obstacle.type === 2 || obstacle.type === 3 || obstacle.type === 4) {
-							//console.log(collides(thiz, obstacle));
-							//they have touched the platform
-							if (collides(thiz, obstacle)) {
-								//if they are above platform and jumping
-								if ((thiz.currentAction === 'jumping' || thiz.currentAction === 'falling') && thiz.y <= obstacle.y - obstacle.height) {
-									//if we're not jumping and we are moving horizontally prevent us from continuing to fall by stoping y velocity
-									if (!inArray(thiz.currentActions, 'jumping') && (thiz.lastAction === 'moving right' || thiz.lastAction === 'moving left'))
-										thiz.vy = 0;
-									//stand if we landed for the first time
-									//if we're not moving left or right when we hit the ground stop
-									if (thiz.currentAction === 'jumping' || thiz.currentAction === 'falling') {
-										removeFromArray(thiz.currentActions, 'jumping');
-										if (!(thiz.lastAction === 'moving right') && !(thiz.lastAction === 'moving left')) {
-											//only stand after initial landing and not moving left or right
-											if (thiz.y !== obstacle.y - thiz.height + 0.5) thiz.action('standing'); //reset from jumping to just standing
-										}
-									}
-									//verify initial landing and fix position
-									thiz.y = obstacle.y - thiz.height + 0.5;
-								} else { //we are below the platform
-									thiz.vy = 1; //bounce down
+					var handlePlayerObstacleCollision = function(type, obstacle) {
+						//compensate for bottom with platforms
+						var topOfObstacle = (type === 'platform') ? obstacle.y - obstacle.height : obstacle.y;
+						//if they are above platform and jumping
+						if ((thiz.currentAction === 'jumping' || thiz.currentAction === 'falling') && thiz.y <= topOfObstacle) {
+							//if we're not jumping and we are moving horizontally prevent us from continuing to fall by stoping y velocity
+							if (!inArray(thiz.currentActions, 'jumping') && (thiz.lastAction === 'moving right' || thiz.lastAction === 'moving left'))
+								thiz.vy = 0;
+							//stand if we landed for the first time
+							//if we're not moving left or right when we hit the ground stop
+							if (thiz.currentAction === 'jumping' || thiz.currentAction === 'falling') {
+								removeFromArray(thiz.currentActions, 'jumping');
+								if (!(thiz.lastAction === 'moving right') && !(thiz.lastAction === 'moving left')) {
+									//only stand after initial landing and not moving left or right
+									if (thiz.y !== obstacle.y - thiz.height + 0.5) thiz.action('standing'); //reset from jumping to just standing
 								}
 							}
+							//verify initial landing and fix position
+							thiz.y = obstacle.y - thiz.height + 0.5;
+						} else { //we are below the platform, or running into the obstacle
+							if (type === 'platform') thiz.vy = 1; //bounce down
+							else if (type === 'obstacle' && !(thiz.y <= topOfObstacle)) { //stop when we hit it
+								//if player is moving left towards obstacle (constants used to prevent additional collisions)
+								if (thiz.vx < 0) thiz.x = obstacle.x + obstacle.width + 3;
+								else if (thiz.vx > 0) thiz.x = obstacle.x - obstacle.width / 2 - 1; //moving right towards obstacle
+								else thiz.x = thiz.x + 1; //when we stop moving against it dont move
+							}
 						}
+					};
+					obstacles.forEach(function(obstacle) {
+						//SIDE SCROLLING (move back stage as we walk)
+						if ((inArray(thiz.currentActions, 'moving right') || inArray(thiz.currentActions, 'moving left') || thiz.lastAction === 'moving right' || thiz.lastAction === 'moving left')) {
+							if(thiz.x >= width / 2.3){
+								thiz.x = thiz.x - 1;
+								obstacle.x -= thiz.vx + 1;
+							}
+							else obstacle.x -= thiz.vx;
+						}
+						//PHYSICS
 						//if they are above the ground, not jumping, and not colliding with any obstacles make them fall
 						if (thiz.y < groundLocation && thiz.currentAction !== 'jumping' && (function() {
 							for (var i = obstacles.length - 1; i >= 0; --i) {
@@ -283,9 +289,19 @@ var data = {
 						})()) {
 							thiz.action('falling');
 						}
+						//OBSTACLE COLLISIONS
+						//platforms
+						if (obstacle.type === 2 || obstacle.type === 3 || obstacle.type === 4) {
+							//they have touched the platform
+							if (collides(thiz, obstacle)) {
+								handlePlayerObstacleCollision('platform', obstacle);
+							}
+						}
 						//obstacles to jump over
-						if (obstacle.type === 1) {
-							//...to be continued
+						else if (obstacle.type === 1) {
+							if (collides(thiz, obstacle)) { //touch obstacle
+								handlePlayerObstacleCollision('obstacle', obstacle);
+							}
 						}
 						//BULLET COLLISIONS
 
