@@ -23,7 +23,7 @@ $(window).on("resize", function() {
 //keyboard handlers
 $(document).keyup(function(e) {
 	//when user presses escape show start page
-	if (e.keyCode == 27) { //esc
+	if (e.keyCode === 27) { //esc
 		showStartPage();
 	}
 });

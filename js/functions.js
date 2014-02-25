@@ -1,7 +1,7 @@
 var inArray = function(arr, key){
 	var ret = false;
 	arr.forEach(function(entry){
-		if(key == entry) ret = true;
+		if(key === entry) ret = true;
 	});
 	return ret;
 };

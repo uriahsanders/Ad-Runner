@@ -9,9 +9,8 @@ canvas.height = window.innerHeight;
 var height = canvas.height;
 var width = canvas.width;
 var data = {
-	currentLevel: null,
+	currentLevel: null, //what level are we on?
 	gameIsOnline: null, //are we playing with an internet connection?
-	deviceIsMobile: null, //are we playing on a mobile device?
 	gameIsPlaying: false, //begin as false until user clicks a level
 	settings: {
 
@@ -19,22 +18,26 @@ var data = {
 	/**
 	 *Each level will have its unique functions called to change the specifics
 	 *of the game depending on data.currentLevel
-	 *Interface forEach level in levels:
-	 *playerObject(); setPrototypes(); stageObject(); handleEvents();
+	 *General interface forEach level in levels:
+	 *playerObject(); setPrototypes(); stageObject(); handleEvents(); handleStageInteractions();
 	 */
 	levels: {
 		L1: function() {
-			//some general positions ( temp, cant use vars in the future for level scope D: )
 			var playerHeight = height / 20;
 			var playerWidth = width / 20;
 			var groundHeight = height / 100;
 			var groundLocation = height - groundHeight - playerHeight; //minus height of player
-			var collides = function(a, b) {
+			var midScreen = width / 2;
+			var collides = function(a, b) { //are a and b touching?
 				//rectangular collision algorithm
 				return a.x < b.x + b.width &&
 					a.x + a.width > b.x &&
 					a.y < b.y + b.height &&
 					a.y + a.height > b.y;
+			};
+			//common booleans for "player" to condense code
+			var jumpingOrFalling = function() { //use with .call(this)
+				return this.currentAction === 'jumping' || this.currentAction === 'falling';
 			};
 			var RETURN = {}; //build object to return in steps for easier scope access
 			//note: side scrolling will be acomplished by moving all stage elements in the opposite direction of the player
@@ -77,10 +80,7 @@ var data = {
 					ctx.fillRect(0, height, width, -groundHeight);
 					var blockWidth = width / 10; //each full screen is ten blocks
 					var blockXPos = 0; //start at left-most of map
-					var obstacleHeight = height / 15; //height of obstacles
-					var lowPlatformHeight = height - obstacleHeight * 2;
-					var middlePlatformHeight = height - obstacleHeight * 3;
-					var highPlatformHeight = height - obstacleHeight * 4;
+					var obstacleHeight = height / 15; //starting height of obstacles (abstract)
 					var block; //the map element we are currently on
 					var obj = {}; //for obstacle "self"
 					ctx.fillStyle = '#000';
@@ -92,19 +92,11 @@ var data = {
 								obj.height = 0;
 							} else if (block === 1) {
 								obj.y = groundLocation * 1.01 - obstacleHeight * 4;
-								obj.height = highPlatformHeight;
+								obj.height = height - obstacleHeight * 4;
 							} else if (block === 2 || block === 3 || block === 4) {
 								obj.height = 3;
-								switch (block) {
-									case 2:
-										obj.y = lowPlatformHeight;
-										break;
-									case 3:
-										obj.y = middlePlatformHeight;
-										break;
-									case 4:
-										obj.y = highPlatformHeight;
-								}
+								//create an obstacle with tallness relative to num
+								obj.y = height - obstacleHeight * block;
 							}
 							this.obstacles.push(this.newObstacle({
 								type: block,
@@ -122,6 +114,15 @@ var data = {
 					});
 				}
 			};
+			//returns false if the player is hitting any obstacles
+			var noObstacleCollisions = function(player) {
+				var obstacles = RETURN.stageObject.obstacles;
+				for (var i = obstacles.length - 1; i >= 0; --i) {
+					if (collides(player, obstacles[i])) return false;
+				}
+				return true;
+			};
+			//REMEMBER: top corner is (0, 0)
 			RETURN.playerObject = { //generate attributes object for a player
 				name: null,
 				health: 100, //temp
@@ -160,9 +161,10 @@ var data = {
 				update: function() { //update player info
 					this.handleStageInteractions();
 					//player will win before reaching right side so just make sure the never go past left side of canvas
-					if (this.x + this.vx > 0)
+					//also dont move them if they are at middle of screen; background will move instead
+					if (this.x + this.vx > 0 && this.x <= midScreen)
 						this.x += this.vx; //left-right
-					if (this.currentAction === 'jumping' || this.currentAction === 'falling') {
+					if (jumpingOrFalling.call(this)) {
 						this.y += this.vy; //up-down
 						this.vy += this.ay; //slow down as we go up, speed up as we go down
 					}
@@ -170,9 +172,8 @@ var data = {
 						if (this.y !== groundLocation) this.y = groundLocation; //if we were lower than the ground upon landing fix that
 						if (this.vy !== 0) this.vy = 0; //we just hit the ground again so stop
 						//if we're not moving left or right when we hit the ground stop
-						if (this.currentAction === 'jumping' || this.currentAction === 'falling') {
-							if (this.currentAction === 'jumping') removeFromArray(this.currentActions, 'jumping');
-							if (this.currentAction === 'falling') removeFromArray(this.currentActions, 'falling');
+						if (jumpingOrFalling.call(this)) {
+							removeFromArray(this.currentActions, this.currentAction);
 							if (!(this.lastAction === 'moving right') && !(this.lastAction === 'moving left')) {
 								this.action('standing'); //reset from jumping/falling to just standing
 							}
@@ -188,7 +189,6 @@ var data = {
 				},
 				draw: function() { //draw player
 					ctx.fillStyle = this.color;
-					//draw stick figure
 					ctx.beginPath();
 					ctx.fillRect(this.x, this.y, this.width, this.height);
 					//hijack this update for projectiles as well
@@ -245,16 +245,16 @@ var data = {
 						//compensate for bottom with platforms
 						var topOfObstacle = (type === 'platform') ? obstacle.y - obstacle.height : obstacle.y;
 						//if they are above platform and jumping
-						if ((thiz.currentAction === 'jumping' || thiz.currentAction === 'falling') && thiz.y <= topOfObstacle) {
+						if ((jumpingOrFalling.call(thiz)) && thiz.y <= topOfObstacle) {
 							//if we're not jumping and we are moving horizontally prevent us from continuing to fall by stoping y velocity
-							if (!inArray(thiz.currentActions, 'jumping') && (thiz.lastAction === 'moving right' || thiz.lastAction === 'moving left'))
+							if (!inArray(thiz.currentActions, 'jumping') && (thiz.vx < 0 || thiz.vx > 0))
 								thiz.vy = 0;
 							//stand if we landed for the first time
 							//if we're not moving left or right when we hit the ground stop
-							if (thiz.currentAction === 'jumping' || thiz.currentAction === 'falling') {
+							if (jumpingOrFalling.call(thiz)) {
 								removeFromArray(thiz.currentActions, 'jumping');
 								if (!(thiz.lastAction === 'moving right') && !(thiz.lastAction === 'moving left')) {
-									//only stand after initial landing and not moving left or right
+									//only stand after initial landing and not moving left or right (+ 0.5 keeps us from continuing to collide slightly)
 									if (thiz.y !== obstacle.y - thiz.height + 0.5) thiz.action('standing'); //reset from jumping to just standing
 								}
 							}
@@ -264,42 +264,30 @@ var data = {
 							if (type === 'platform') thiz.vy = 1; //bounce down
 							else if (type === 'obstacle' && !(thiz.y <= topOfObstacle)) { //stop when we hit it
 								//if player is moving left towards obstacle (constants used to prevent additional collisions)
-								if (thiz.vx < 0) thiz.x = obstacle.x + obstacle.width + 3;
-								else if (thiz.vx > 0) thiz.x = obstacle.x - obstacle.width / 2 - 1; //moving right towards obstacle
-								else thiz.x = thiz.x + 1; //when we stop moving against it dont move
+								if (thiz.vx < 0 && thiz.x > obstacle.x) thiz.x = obstacle.x + obstacle.width + 3;
+								//moving right towards obstacle
+								else if (thiz.vx > 0 && thiz.x < obstacle.x) thiz.x = obstacle.x - obstacle.width / 2 - 3;
 							}
 						}
 					};
 					obstacles.forEach(function(obstacle) {
 						//SIDE SCROLLING (move back stage as we walk)
-						if ((inArray(thiz.currentActions, 'moving right') || inArray(thiz.currentActions, 'moving left') || thiz.lastAction === 'moving right' || thiz.lastAction === 'moving left')) {
-							if(thiz.x >= width / 2.3){
-								thiz.x = thiz.x - 1;
-								obstacle.x -= thiz.vx + 1;
-							}
-							else obstacle.x -= thiz.vx;
+						//if were moving horizontally in some way even if in the air (so long as we touch no obstacles)
+						if (inArray(thiz.currentActions, 'moving right') || inArray(thiz.currentActions, 'moving left') || thiz.vx < 0 || thiz.vx > 0 || (thiz.y < groundLocation && noObstacleCollisions(thiz))) {
+							//move screen back if past center
+							if (!(thiz.x <= midScreen)) obstacle.x -= thiz.vx;
 						}
 						//PHYSICS
 						//if they are above the ground, not jumping, and not colliding with any obstacles make them fall
-						if (thiz.y < groundLocation && thiz.currentAction !== 'jumping' && (function() {
-							for (var i = obstacles.length - 1; i >= 0; --i) {
-								if (collides(thiz, obstacles[i])) return false;
-							}
-							return true;
-						})()) {
+						if (thiz.y < groundLocation && thiz.currentAction !== 'jumping' && noObstacleCollisions(thiz)) {
 							thiz.action('falling');
 						}
 						//OBSTACLE COLLISIONS
-						//platforms
-						if (obstacle.type === 2 || obstacle.type === 3 || obstacle.type === 4) {
-							//they have touched the platform
-							if (collides(thiz, obstacle)) {
+						if (collides(thiz, obstacle)) { //touch obstacle
+							//obstacles to jump onto
+							if (obstacle.type === 2 || obstacle.type === 3 || obstacle.type === 4) {
 								handlePlayerObstacleCollision('platform', obstacle);
-							}
-						}
-						//obstacles to jump over
-						else if (obstacle.type === 1) {
-							if (collides(thiz, obstacle)) { //touch obstacle
+							} else if (obstacle.type === 1) { //obstacles to jump over
 								handlePlayerObstacleCollision('obstacle', obstacle);
 							}
 						}
@@ -310,7 +298,7 @@ var data = {
 			};
 			RETURN.setPrototypes = function(Player) { //set prototypes for Player and Ad classes
 				Player.prototype.action = function(what) {
-					//conditional because we only need actions for movement
+					//conditional because we only need currentAction for movement
 					if (what !== 'shooting') this.currentAction = what; //what is the player doing now?
 					switch (what) { //launch initial action (then dynamics are handled in player.update())
 						case 'standing':
@@ -340,18 +328,13 @@ var data = {
 				$(document).keydown(function(e) {
 					//dont register movement keys if in mid-air
 					var key = e.keyCode;
-					var obstacles = RETURN.stageObject.obstacles;
 					if (player.numToAction(key) !== false) { //is key valid?
 						//if they are jumping or shooting they cant do anything but jump unless they are in the air
-						if ((player.currentAction !== 'jumping' || (key === 38 && (player.y === groundLocation || !(function() {
-							for (var i = obstacles.length - 1; i >= 0; --i) {
-								if (collides(player, obstacles[i])) return false;
-							}
-							return true;
-						})()))) && key !== 32) { //if not jumping and not shooting
+						if ((player.currentAction !== 'jumping' || (key === 38 && (player.y === groundLocation || !noObstacleCollisions(player)))) && key !== 32) { //if not jumping and not shooting
 							//do different action depending on key code of key press
 							var action = player.numToAction(key);
-							//horizontal movement requires a more static identifier for accurate landing + movement
+							//horizontal movement requires a more static identifier for accurate landing + movement 
+							//(if they let go of horizontal movement in midair we need to know and this is how)
 							if (action === 'moving right' || action === 'moving left') player.lastAction = action;
 							player.action(action);
 							//dont add duplicate actions, since keyup is constantly called when held down
@@ -369,18 +352,13 @@ var data = {
 					//if we're moving left or right stop when we let go of the key
 					//also make sure we're either on the ground or on a platform when we do that
 					//we dont want to break midair trajectory
-					var obstacles = RETURN.stageObject.obstacles;
-					if ((key === 39 || key === 37) && (!(function() {
-						for (var i = obstacles.length - 1; i >= 0; --i) {
-							if (collides(player, obstacles[i])) return false;
-						}
-						return true;
-					})() || player.y === groundLocation)) {
+					var keyLeftOrRight = key === 39 || key === 37;
+					if (keyLeftOrRight && (!noObstacleCollisions(player) || player.y === groundLocation)) {
 						player.action('standing'); //stop player
 					}
 					//remove action associated with key
 					removeFromArray(player.currentActions, player.numToAction(key));
-					if (key === 39 || key === 37) player.lastAction = null;
+					if (keyLeftOrRight) player.lastAction = null;
 				});
 			};
 			return RETURN;
@@ -471,37 +449,37 @@ function startPlaying() {
 		player.draw();
 		stage.draw();
 	};
-	//requestAnimationFrame polyfill by Erik Möller. fixes from Paul Irish and Tino Zijdel
+	//requestAnimationFrame polyfill
+	//thanks to -> Erik Möller for original polyfill
 	(function() {
 		var lastTime = 0;
 		var vendors = ['ms', 'moz', 'webkit', 'o'];
-		for (var x = 0, len = vendors.length; x < len && !window.requestAnimationFrame; ++x) {
+		for (var x = vendors.length - 1; x >= 0 && !window.requestAnimationFrame; --x) {
 			window.requestAnimationFrame = window[vendors[x] + 'RequestAnimationFrame'];
 			window.cancelAnimationFrame = window[vendors[x] + 'CancelAnimationFrame'] || window[vendors[x] + 'CancelRequestAnimationFrame'];
 		}
-		if (!window.requestAnimationFrame)
-			window.requestAnimationFrame = function(callback, element) {
-				var currTime = new Date().getTime();
-				var timeToCall = Math.max(0, 16 - (currTime - lastTime));
-				var id = window.setTimeout(function() {
-						callback(currTime + timeToCall);
-					},
-					timeToCall);
-				lastTime = currTime + timeToCall;
-				return id;
-			};
-		if (!window.cancelAnimationFrame)
-			window.cancelAnimationFrame = function(id) {
-				clearTimeout(id);
-			};
+		window.requestAnimationFrame = window.requestAnimationFrame || function(callback, element) {
+			var currTime = new Date().getTime();
+			var timeToCall = Math.max(0, 16 - (currTime - lastTime));
+			var CTT = currTime + timeToCall;
+			var id = window.setTimeout(function() {
+					callback(CTT);
+				},
+				timeToCall);
+			lastTime = CTT;
+			return id;
+		};
+		window.cancelAnimationFrame = window.cancelAnimationFrame || function(id) {
+			clearTimeout(id);
+		};
 	}());
 	//start animation loop and just keep drawing and updating
-	(function animloop() {
+	(function animLoop() {
 		//only keep animating if game is active
 		if (data.gameIsPlaying) {
-			requestAnimationFrame(animloop);
+			requestAnimationFrame(animLoop);
 			update(); //update coordinate and game data
 			draw(); //redraw information of the canvas
-		} else cancelAnimationFrame(animloop);
+		} else cancelAnimationFrame(animLoop);
 	})();
 }
