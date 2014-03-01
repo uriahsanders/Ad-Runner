@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<!-- Non-Mobile Version -->
+<head>
+	<meta charset="UTF-8">
+	<title>Ad_Runner</title>
+	<link rel="stylesheet" href="libs/jquery.mobile.min.css" />
+	<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+	<div id="dom">
+		<div id="title">
+			Ad_Runner
+		</div><br>
+		<div id="description">
+			In the future, video games are over ran by aggressive ads. To save the gaming world, a group of hackers designed an advanced ad blocking virus, designed to run through games and destroy all ads it sees. You are this virus, and your goal is to beat each game without dying....and destroy as many ads as possible along the way! The more ads you destroy, and games you conquer, the more powerful you become. But watch out! Ads are really, really annoying, and will do anything to sell their product.
+		</div><br>
+		<div id="levels">
+			<button class="level"id="level-1">1</button>
+		</div>
+	</div>
+	<!-- Canvas -->
+	<canvas id="game"></canvas>
+	<!-- Scripts (In production will only use ad_runner.min.js and dependancies) -->
+	<script src="libs/jquery.min.js"></script>
+	<script src="libs/jquery.mobile.min.js"></script>
+	<!-- <script src="libs/easeljs.min.js"></script> -->
+	<script src="js/functions.js"></script>
+	<script src="js/game.js"></script>
+	<script src="js/controller.js"></script>
+</body>
+</html>

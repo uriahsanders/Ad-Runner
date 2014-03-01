@@ -1,0 +1,26 @@
+html body{
+	padding: 0;
+	margin: 0;
+	overflow-y: hidden;
+}
+#title{
+	font-size: 2em;
+}
+#description{
+	width: 50%;
+}
+#dom{
+	padding: 10px;
+}
+.level{
+	border: 1px solid #000;
+	padding: 10px;
+	height: 100px;
+	width: 10%;
+	cursor: pointer;
+	text-align: center;
+	font-size: 1.5em;
+}
+#game{
+	display: none;
+}
