@@ -8,6 +8,61 @@ canvas.height = window.innerHeight;
 //so common might as well reduce op codes
 var height = canvas.height;
 var width = canvas.width;
+//now start defining global level classes in comment sections:
+///////////////////////////////////////////////////////////////////////////////////
+var GameElement = function(attrs) { //basic game element that all elements inherit
+    //set each property of attrs as instance data
+    for (var attr in attrs) {
+        this[attr] = attrs[attr];
+    }
+};
+///////////////////////////////////////////////////////////////////////////////////
+var Player = function(attrs) { //@param attrs - object :- attributes
+    GameElement.call(this, attrs);
+};
+Player.prototype = Object.create(GameElement.prototype); //inherit GameElement and such
+//gene code of a player will determine it's unique abilities and upgrades and all
+Player.prototype.geneCode = function() {
+
+};
+//when a player loses game restart level and lose some points
+Player.prototype.loseGame = function() {
+
+};
+//when a player wins the game show end game screen
+Player.prototype.winGame = function() {
+
+};
+///////////////////////////////////////////////////////////////////////////////////
+var Enemy = function(attrs) {
+    GameElement.call(this, attrs);
+};
+Enemy.prototype = Object.create(GameElement.prototype);
+Enemy.prototype.constructor = Enemy;
+//when an enemeny is killed what do we do?
+Enemy.prototype.die = function() {
+
+};
+///////////////////////////////////////////////////////////////////////////////////
+var Ad = function(attrs) { //extends enemy
+    Enemy.call(this, attrs);
+};
+Ad.prototype = Object.create(Enemy.prototype);
+Ad.prototype.constructor = Ad;
+//When Ad collides with player, fill the screen and sell product for a moment
+Ad.prototype.fillScreen = function() {
+
+};
+//Sometimes we will want the ads to say something (sell dat product!)....
+Ad.prototype.speak = function() {
+
+};
+///////////////////////////////////////////////////////////////////////////////////
+var Stage = function(attrs) {
+    GameElement.call(this, attrs);
+};
+Stage.prototype = Object.create(GameElement.prototype);
+///////////////////////////////////////////////////////////////////////////////////
 var data = {
     currentLevel: null, //what level are we on?
     gameIsOnline: null, //are we playing with an internet connection?
@@ -59,9 +114,11 @@ var data = {
                  *10 is the Boss
                  */
                 map: [ //temp
-                    1, -1, -1, -1, 2, -1, -1, 2, 4, 3, -1, 2, 3, 4, -1, -1, -1, 3
+                    -1, -1, -1, -1, -1, -1, 7, 8, -1, -1, 2, 7, -1, 1, -1, 7, 3, 7, -1, -1, 8, 2, -1, 1, -1,  7, 8, 8
                 ],
                 obstacles: [],
+                enemies: [],
+                projectiles: [], //enemy projectiles
                 newObstacle: function(self) {
                     //Caller should define self.x, self.y, self.width, self.height, self.type
                     self.update = function() {
@@ -87,24 +144,122 @@ var data = {
                     if (init === 1) { //first time building map, so default x positions
                         for (var i = 0, len = this.map.length; i < len; ++i) {
                             block = this.map[i];
-                            if (block === -1) {
-                                obj.y = 0;
-                                obj.height = 0;
-                            } else if (block === 1) {
-                                obj.y = groundLocation * 1.01 - obstacleHeight * 4;
-                                obj.height = height - obstacleHeight * 4;
-                            } else if (block === 2 || block === 3 || block === 4) {
-                                obj.height = 3;
-                                //create an obstacle with tallness relative to num
-                                obj.y = height - obstacleHeight * block;
+                            if (block < 7) { //we care about obstacles here
+                                if (block === -1) {
+                                    obj.y = 0;
+                                    obj.height = 0;
+                                } else if (block === 1) {
+                                    obj.y = groundLocation * 1.01 - obstacleHeight * 4;
+                                    obj.height = height - obstacleHeight * 4;
+                                } else if (block === 2 || block === 3 || block === 4) {
+                                    obj.height = 3;
+                                    //create an obstacle with tallness relative to num
+                                    obj.y = height - obstacleHeight * block;
+                                }
+                                this.obstacles.push(this.newObstacle({
+                                    type: block,
+                                    x: blockXPos,
+                                    y: obj.y,
+                                    width: blockWidth,
+                                    height: obj.height
+                                }));
+                            } else {
+                                //position enemies:
+                                //attributes for enemies/ads
+                                var thiz = this; //stageObject
+                                var attrs = function(isAd) { //@param isAd - differentiate between Ads and normal enemies
+                                    var obj = {
+                                        id: i,
+                                        x: blockXPos,
+                                        y: groundLocation - (isAd ? 50 : 30),
+                                        vx: 0,
+                                        vy: 0,
+                                        height: playerHeight + (isAd ? 50 : 30),
+                                        width: playerWidth + (isAd ? 30 : 5),
+                                        color: isAd ? 'red' : 'blue',
+                                        draw: function() {
+                                            ctx.fillStyle = this.color;
+                                            ctx.fillRect(this.x, this.y, this.width, this.height);
+                                        },
+                                        update: function(){
+
+                                        },
+                                        //where to fire from
+                                        fireFrom: function() { //we will fire from the middle of player atm
+                                            return {
+                                                x: this.x + this.width / 2, //this.width / 2
+                                                y: this.y + 10, //this.height / 2
+                                            };
+                                        },
+                                        newProjectile: function(self) {
+                                            //Caller should define self.x and self.y
+                                            self.active = true;
+                                            self.vx = self.speed;
+                                            self.vy = 0; //may need in the future
+                                            self.color = '#000';
+                                            self.width = 20;
+                                            self.height = 3;
+                                            //so we can clear projectiles once they leave sight
+                                            self.isWithinStage = function() {
+                                                return self.x >= 0 && self.x <= width &&
+                                                    self.y >= 0 && self.y <= height;
+                                            };
+                                            self.update = function() {
+                                                self.x += self.vx;
+                                                self.y += self.vy;
+                                                self.active = self.active && self.isWithinStage();
+                                            };
+                                            self.draw = function() {
+                                                ctx.fillStyle = self.color;
+                                                ctx.fillRect(self.x, self.y, self.width * 2, self.height);
+                                            };
+                                            return self;
+                                        },
+                                        shoot: function(num) {
+                                            var projectiles = thiz.projectiles;
+                                            var len = projectiles.length;
+                                            var currentEnemy = this; //obj
+                                            var startFiring = function() {
+                                                projectiles.push(currentEnemy.newProjectile({
+                                                    id: currentEnemy.id, //identify with enemy firing
+                                                    x: currentEnemy.fireFrom().x,
+                                                    y: currentEnemy.fireFrom().y,
+                                                    speed: num * 5,
+                                                }));
+                                            };
+                                            var thisEnemyHasNoProjectilesOnTheField = function() {
+                                                var ret = true;
+                                                projectiles.forEach(function(currentProjectile) {
+                                                    if (currentProjectile.id === currentEnemy.id) ret = false;
+                                                });
+                                                return ret;
+                                            };
+                                            var lastProjectileThisEnemyFired = function() {
+                                                var myProjectiles = [];
+                                                projectiles.forEach(function(currentProjectile) {
+                                                    if (currentProjectile.id === currentEnemy.id) myProjectiles.push(currentProjectile);
+                                                });
+                                                return myProjectiles[myProjectiles.length - 1];
+                                            };
+                                            //shoot if no projectiles from this enemy on field
+                                            if (thisEnemyHasNoProjectilesOnTheField()) {
+                                                startFiring();
+                                            }
+                                            //SO WE CAN SPACE OUT CANVAS BULLETS (use whitespace for images :P)
+                                            //if more than one projectile from this enemy on field then make sure last projectile from this enemy is
+                                            //far enough before we fire the next shot from this enemy
+                                            else if (this.fireFrom().x - 200 > lastProjectileThisEnemyFired().x && lastProjectileThisEnemyFired().id === this.id) {
+                                                startFiring();
+                                            }
+                                        }
+                                    };
+                                    return obj;
+                                };
+                                //use appropriate class depending on block
+                                //bosses will always be Ads so fits with else
+                                this.enemies.push((block === 5 || block === 7) ?
+                                    new Enemy(attrs(false)) : new Ad(attrs(true)));
                             }
-                            this.obstacles.push(this.newObstacle({
-                                type: block,
-                                x: blockXPos,
-                                y: obj.y,
-                                width: blockWidth,
-                                height: obj.height
-                            }));
                             blockXPos += blockWidth; //move x position over more
                         }
                     }
@@ -112,6 +267,20 @@ var data = {
                     this.obstacles.forEach(function(obstacle) {
                         obstacle.draw();
                     });
+                    //draw each created enemy
+                    this.enemies.forEach(function(enemy) {
+                        enemy.draw();
+                        enemy.update();
+                    });
+                    //draw every fired enemy projectile
+                    this.projectiles.forEach(function(projectile) {
+                        projectile.draw();
+                        projectile.update();
+                    });
+                    this.projectiles = this.projectiles.filter(function(projectile) {
+                        return projectile.active;
+                    });
+                    //also every once in a while make a banner Ad fly across screen
                 }
             };
             //returns false if the player is hitting any obstacles
@@ -134,7 +303,7 @@ var data = {
                 vx: 0, //horizontal velocity
                 vy: 0, //vertical velocity
                 ay: (height / 600) * 0.1, //vertical acceleration (slow down as you go up, speed up as you go down) [for parabolic motion]
-                color: 'red',
+                color: 'green',
                 width: playerWidth,
                 height: playerHeight,
                 colliding: false, //are we hitting something?
@@ -207,7 +376,6 @@ var data = {
                 newProjectile: function(self) {
                     //Caller should define self.x and self.y
                     self.active = true;
-                    self.speed = 5;
                     self.vx = self.speed;
                     self.vy = 0; //may need in the future
                     self.color = '#000';
@@ -230,9 +398,11 @@ var data = {
                     return self;
                 },
                 shoot: function() {
+                    var thiz = this;
                     this.projectiles.push(this.newProjectile({
                         x: this.fireFrom().x,
-                        y: this.fireFrom().y
+                        y: this.fireFrom().y,
+                        speed: (thiz.vx < 0) ? -5 : 5 //shoot in direction of movement, later will base on dir.
                     }));
                 },
                 //collisions, side scrolling, etc.
@@ -241,6 +411,7 @@ var data = {
                     var obstacleHeight = height / 15; //height of obstacles
                     var lowPlatformHeight = height - obstacleHeight * 2;
                     var obstacles = RETURN.stageObject.obstacles;
+                    var enemies = RETURN.stageObject.enemies;
                     var handlePlayerObstacleCollision = function(type, obstacle) {
                         //compensate for bottom with platforms
                         var topOfObstacle = (type === 'platform') ? obstacle.y - obstacle.height : obstacle.y;
@@ -291,8 +462,18 @@ var data = {
                                 handlePlayerObstacleCollision('obstacle', obstacle);
                             }
                         }
-                        //BULLET COLLISIONS
-
+                    });
+                    enemies.forEach(function(enemy) {
+                        //SIDE SCROLLING (move back enemies as we walk)
+                        //if were moving horizontally in some way even if in the air (so long as we touch no obstacles)
+                        if (inArray(thiz.currentActions, 'moving right') || inArray(thiz.currentActions, 'moving left') || thiz.vx < 0 || thiz.vx > 0 || (thiz.y < groundLocation && noObstacleCollisions(thiz))) {
+                            //move screen back if past center
+                            if (!(thiz.x <= midScreen)) enemy.x -= thiz.vx;
+                        }
+                        //if enemy is in range and level with player it is allowed to shoot()
+                        if ((thiz.x >= enemy.x + 400 || thiz.x >= enemy.x - 400) && thiz.y >= enemy.y - thiz.height) {
+                            enemy.shoot(thiz.x < enemy.x ? -1 : 1); //let it know what side of the enemy we're on for direction
+                        }
                     });
                 }
             };
@@ -309,7 +490,8 @@ var data = {
                             this.vy = -(height / 130); //canvas is inverted so make velocity negative to go up
                             break;
                         case 'falling':
-                            this.vy = height / 130;
+                            //unless we're moving left or right in which case we naturally descend
+                            if (!inArray(this.currentActions, 'moving right') && !inArray(this.currentActions, 'moving left')) this.vy = height / 130;
                             break;
                         case 'moving right':
                             this.vx = height / (height / 2.7);
@@ -326,91 +508,96 @@ var data = {
             //listen for events for this level
             RETURN.handleEvents = function(player) { //player as param because its undefined as of yet
                 //if (isMobile()) { //comment out for dev on ripple emulator :(
-                    //move left or right and side screen tap/hold
-                    $(document).on('touchstart', '#game', function(e) {
-                        //x coordinate of touch
-                        var touchX = e.originalEvent.touches[0].pageX;
-                        //what part of the canvas are we touching?
-                        var leftSide = touchX <= .10 * width; //left 10% of width
-                        var rightSide = touchX >= .90 * width; //right 10% of width
-                        if (leftSide || rightSide) {
-                            //if they are jumping or shooting they cant do anything but jump unless they are in the air
-                            if ((player.currentAction !== 'jumping' || (player.currentAction === 'jumping' && (player.y === groundLocation || !noObstacleCollisions(player))))) {
-                                var action;
-                                if (leftSide) action = 'moving left';
-                                else if (rightSide) action = 'moving right';
-                                player.action(action);
-                                player.lastAction = action;
-                                //dont add duplicate actions, since keyup is constantly called when held down
-                                if (!inArray(player.currentActions, action)) {
-                                    player.currentActions.push(action);
-                                }
-                            }
+                //move left or right and side screen tap/hold
+                $(document).on('touchstart', '#game', function(e) {
+                    //x coordinate of touch
+                    var touchX = e.originalEvent.touches[0].pageX;
+                    //what part of the canvas are we touching?
+                    var leftSide = touchX <= .10 * width; //left 10% of width
+                    var rightSide = touchX >= .90 * width; //right 10% of width
+                    if (leftSide || rightSide) {
+                        //if they are jumping or shooting they cant do anything but jump unless they are in the air
+                        //if ((player.currentAction !== 'jumping' || (player.currentAction === 'jumping' && (player.y === groundLocation || !noObstacleCollisions(player))))) {
+                        var action;
+                        if (leftSide) action = 'moving left';
+                        else if (rightSide) action = 'moving right';
+                        player.action(action);
+                        player.lastAction = action;
+                        //dont add duplicate actions, since keyup is constantly called when held down
+                        if (!inArray(player.currentActions, action)) {
+                            player.currentActions.push(action);
                         }
-                    });
-                    //when tap is released update current actions
-                    $(document).on('touchend', '#game', function() {
-                        //if we're moving left or right stop when we let go of the key
-                        //also make sure we're either on the ground or on a platform when we do that
-                        //we dont want to break midair trajectory
-                        var movingLeftOrRight = player.vx !== 0;
-                        if (movingLeftOrRight && (!noObstacleCollisions(player) || player.y === groundLocation)) {
-                            player.action('standing'); //stop player
+                        //}
+                    }
+                });
+                //when tap is released update current actions
+                $(document).on('touchend', '#game', function() {
+                    //if we're moving left or right stop when we let go of the key
+                    //also make sure we're either on the ground or on a platform when we do that
+                    //we dont want to break midair trajectory
+                    var movingLeftOrRight = player.vx !== 0;
+                    if (movingLeftOrRight && (!noObstacleCollisions(player) || player.y === groundLocation)) {
+                        player.action('standing'); //stop player
+                    }
+                    //remove action associated with key
+                    if (player.vx > 0) removeFromArray(player.currentActions, 'moving right');
+                    if (player.vx < 0) removeFromArray(player.currentActions, 'moving left');
+                    if (movingLeftOrRight) player.lastAction = null;
+                });
+                //jump up when swiping up
+                $(document).on('swipeup', '#game', function(e) {
+                    var leftSide = e.pageX <= .10 * width; //left 10% of width
+                    var rightSide = e.pageX >= .90 * width; //right 10% of width
+                    //if ((player.currentAction !== 'jumping' || (player.currentAction === 'jumping' && (player.y === groundLocation || !noObstacleCollisions(player))))){
+                    player.action('jumping');
+                    if (leftSide) player.action('moving left');
+                    else if (rightSide) player.action('moving right');
+                    //}
+                });
+                //fire on middle screen tap (not touchstart to not conflict with jumping)
+                $(document).on('tap', '#game', function(e) {
+                    var leftSide = e.pageX <= .10 * width; //left 10% of width
+                    var rightSide = e.pageX >= .90 * width; //right 10% of width
+                    if (!(leftSide || rightSide)) {
+                        player.action('shooting');
+                    }
+                });
+                //} else {
+                $(document).keydown(function(e) {
+                    //dont register movement keys if in mid-air
+                    var key = e.keyCode;
+                    if (player.numToAction(key) !== false) { //is key valid?
+                        //if they are jumping or shooting they cant do anything but jump unless they are in the air
+                        //if ((player.currentAction !== 'jumping' || (key === 38 && (player.y === groundLocation || !noObstacleCollisions(player)))) && key !== 32) { //if not jumping and not shooting
+                        //do different action depending on key code of key press
+                        var action = player.numToAction(key);
+                        //horizontal movement requires a more static identifier for accurate landing + movement 
+                        //(if they let go of horizontal movement in midair we need to know and this is how)
+                        if (action === 'moving right' || action === 'moving left') player.lastAction = action;
+                        player.action(action);
+                        //dont add duplicate actions, since keyup is constantly called when held down
+                        if (!inArray(player.currentActions, action)) {
+                            player.currentActions.push(action);
                         }
-                        //remove action associated with key
-                        if (player.vx > 0) removeFromArray(player.currentActions, 'moving right');
-                        if (player.vx < 0) removeFromArray(player.currentActions, 'moving left');
-                        if (movingLeftOrRight) player.lastAction = null;
-                    });
-                    //jump up when swiping up
-                    $(document).on('swipeup', '#game', function() {
-                        if ((player.currentAction !== 'jumping' || (player.currentAction === 'jumping' && (player.y === groundLocation || !noObstacleCollisions(player)))))
-                            player.action('jumping');
-                    });
-                    //fire on middle screen tap (not touchstart to not conflict with jumping)
-                    $(document).on('tap', '#game', function(e) {
-                        var leftSide = e.pageX <= .10 * width; //left 10% of width
-                        var rightSide = e.pageX >= .90 * width; //right 10% of width
-                        if (!(leftSide || rightSide)) {
+                        //}
+                        if (key === 32) {
                             player.action('shooting');
                         }
-                    });
-                //} else {
-                    $(document).keydown(function(e) {
-                        //dont register movement keys if in mid-air
-                        var key = e.keyCode;
-                        if (player.numToAction(key) !== false) { //is key valid?
-                            //if they are jumping or shooting they cant do anything but jump unless they are in the air
-                            if ((player.currentAction !== 'jumping' || (key === 38 && (player.y === groundLocation || !noObstacleCollisions(player)))) && key !== 32) { //if not jumping and not shooting
-                                //do different action depending on key code of key press
-                                var action = player.numToAction(key);
-                                //horizontal movement requires a more static identifier for accurate landing + movement 
-                                //(if they let go of horizontal movement in midair we need to know and this is how)
-                                if (action === 'moving right' || action === 'moving left') player.lastAction = action;
-                                player.action(action);
-                                //dont add duplicate actions, since keyup is constantly called when held down
-                                if (!inArray(player.currentActions, action)) {
-                                    player.currentActions.push(action);
-                                }
-                            }
-                            if (key === 32) {
-                                player.action('shooting');
-                            }
-                        }
-                    });
-                    $(document).keyup(function(e) {
-                        var key = e.keyCode;
-                        //if we're moving left or right stop when we let go of the key
-                        //also make sure we're either on the ground or on a platform when we do that
-                        //we dont want to break midair trajectory
-                        var keyLeftOrRight = key === 39 || key === 37;
-                        if (keyLeftOrRight && (!noObstacleCollisions(player) || player.y === groundLocation)) {
-                            player.action('standing'); //stop player
-                        }
-                        //remove action associated with key
-                        removeFromArray(player.currentActions, player.numToAction(key));
-                        if (keyLeftOrRight) player.lastAction = null;
-                    });
+                    }
+                });
+                $(document).keyup(function(e) {
+                    var key = e.keyCode;
+                    //if we're moving left or right stop when we let go of the key
+                    //also make sure we're either on the ground or on a platform when we do that
+                    //we dont want to break midair trajectory
+                    var keyLeftOrRight = key === 39 || key === 37;
+                    if (keyLeftOrRight && (!noObstacleCollisions(player) || player.y === groundLocation)) {
+                        player.action('standing'); //stop player
+                    }
+                    //remove action associated with key
+                    removeFromArray(player.currentActions, player.numToAction(key));
+                    if (keyLeftOrRight) player.lastAction = null;
+                });
                 //}
             };
             return RETURN;
@@ -428,61 +615,6 @@ function startPlaying() {
     data.gameIsPlaying = true;
     $('#dom').hide(); //hide all initial html
     $('#game').show(); //show game canvas
-    //now start defining classes in comment sections:
-    ///////////////////////////////////////////////////////////////////////////////////
-    var GameElement = function(attrs) { //basic game element that all elements inherit
-        //set each property of attrs as instance data
-        for (var attr in attrs) {
-            this[attr] = attrs[attr];
-        }
-    };
-    ///////////////////////////////////////////////////////////////////////////////////
-    var Player = function(attrs) { //@param attrs - object :- attributes
-        GameElement.call(this, attrs);
-    };
-    Player.prototype = Object.create(GameElement.prototype); //inherit GameElement and such
-    //gene code of a player will determine it's unique abilities and upgrades and all
-    Player.prototype.geneCode = function() {
-
-    };
-    //when a player loses game restart level and lose some points
-    Player.prototype.loseGame = function() {
-
-    };
-    //when a player wins the game show end game screen
-    Player.prototype.winGame = function() {
-
-    };
-    ///////////////////////////////////////////////////////////////////////////////////
-    var Enemy = function(attrs) {
-        GameElement.call(this, attrs);
-    };
-    Enemy.prototype = Object.create(GameElement.prototype);
-    Enemy.prototype.constructor = Enemy;
-    //when an enemeny is killed what do we do?
-    Enemy.prototype.die = function() {
-
-    };
-    ///////////////////////////////////////////////////////////////////////////////////
-    var Ad = function(attrs) { //extends enemy
-        Enemy.call(this, attrs);
-    };
-    Ad.prototype = Object.create(Enemy.prototype);
-    Ad.prototype.constructor = Ad;
-    //When Ad collides with player, fill the screen and sell product for a moment
-    Ad.prototype.fillScreen = function() {
-
-    };
-    //Sometimes we will want the ads to say something (sell dat product!)....
-    Ad.prototype.speak = function() {
-
-    };
-    ///////////////////////////////////////////////////////////////////////////////////
-    var Stage = function(attrs) {
-        GameElement.call(this, attrs);
-    };
-    Stage.prototype = Object.create(GameElement.prototype);
-    ///////////////////////////////////////////////////////////////////////////////////
     //some prototypes of Player and Ad will depend on the level so...
     var levelHandler = data.levels[data.currentLevel](); //first shorthand access to current level functions
     levelHandler.setPrototypes(Player); //set prototypes depending on current level

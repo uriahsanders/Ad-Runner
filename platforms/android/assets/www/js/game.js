@@ -309,7 +309,8 @@ var data = {
                             this.vy = -(height / 130); //canvas is inverted so make velocity negative to go up
                             break;
                         case 'falling':
-                            this.vy = height / 130;
+                            //unless we're moving left or right in which case we naturally descend
+                            if(!inArray(this.currentActions, 'moving right') && !inArray(this.currentActions, 'moving left')) this.vy = height / 130;
                             break;
                         case 'moving right':
                             this.vx = height / (height / 2.7);
@@ -335,7 +336,7 @@ var data = {
                         var rightSide = touchX >= .90 * width; //right 10% of width
                         if (leftSide || rightSide) {
                             //if they are jumping or shooting they cant do anything but jump unless they are in the air
-                            if ((player.currentAction !== 'jumping' || (player.currentAction === 'jumping' && (player.y === groundLocation || !noObstacleCollisions(player))))) {
+                            //if ((player.currentAction !== 'jumping' || (player.currentAction === 'jumping' && (player.y === groundLocation || !noObstacleCollisions(player))))) {
                                 var action;
                                 if (leftSide) action = 'moving left';
                                 else if (rightSide) action = 'moving right';
@@ -345,7 +346,7 @@ var data = {
                                 if (!inArray(player.currentActions, action)) {
                                     player.currentActions.push(action);
                                 }
-                            }
+                            //}
                         }
                     });
                     //when tap is released update current actions
@@ -363,9 +364,14 @@ var data = {
                         if (movingLeftOrRight) player.lastAction = null;
                     });
                     //jump up when swiping up
-                    $(document).on('swipeup', '#game', function() {
-                        if ((player.currentAction !== 'jumping' || (player.currentAction === 'jumping' && (player.y === groundLocation || !noObstacleCollisions(player)))))
+                    $(document).on('swipeup', '#game', function(e) {
+                        var leftSide = e.pageX <= .10 * width; //left 10% of width
+                        var rightSide = e.pageX >= .90 * width; //right 10% of width
+                        //if ((player.currentAction !== 'jumping' || (player.currentAction === 'jumping' && (player.y === groundLocation || !noObstacleCollisions(player))))){
                             player.action('jumping');
+                            if(leftSide) player.action('moving left');
+                            else if(rightSide) player.action('moving right');
+                        //}
                     });
                     //fire on middle screen tap (not touchstart to not conflict with jumping)
                     $(document).on('tap', '#game', function(e) {
@@ -381,7 +387,7 @@ var data = {
                         var key = e.keyCode;
                         if (player.numToAction(key) !== false) { //is key valid?
                             //if they are jumping or shooting they cant do anything but jump unless they are in the air
-                            if ((player.currentAction !== 'jumping' || (key === 38 && (player.y === groundLocation || !noObstacleCollisions(player)))) && key !== 32) { //if not jumping and not shooting
+                            //if ((player.currentAction !== 'jumping' || (key === 38 && (player.y === groundLocation || !noObstacleCollisions(player)))) && key !== 32) { //if not jumping and not shooting
                                 //do different action depending on key code of key press
                                 var action = player.numToAction(key);
                                 //horizontal movement requires a more static identifier for accurate landing + movement 
@@ -392,7 +398,7 @@ var data = {
                                 if (!inArray(player.currentActions, action)) {
                                     player.currentActions.push(action);
                                 }
-                            }
+                            //}
                             if (key === 32) {
                                 player.action('shooting');
                             }
